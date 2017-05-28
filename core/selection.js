@@ -21,6 +21,7 @@ class Selection {
     this.scroll = scroll;
     this.composing = false;
     this.root = this.scroll.domNode;
+    this.context = this.getContext();
     this.root.addEventListener('compositionstart', () => {
       this.composing = true;
     });
@@ -129,8 +130,24 @@ class Selection {
     }
   }
 
+  getContext() {
+    const supportsShadowDOM = !!HTMLElement.prototype.attachShadow;
+    let ctx = document;
+    if (!!HTMLElement.prototype.attachShadow) {
+      let el = this.root.parentNode;
+      while (!(el === document || el instanceof ShadowRoot)) {
+        el = el.parentNode;
+      }
+      // HACK: if the ShadowRoot doesn't support getSelection then the browser should allow selection
+      // to pass through the ShadowDOM boundary - use document
+      ctx = (el instanceof ShadowRoot && typeof el.getSelection === 'function') ? el : document;
+    }
+    debug.info('getContext', ctx);
+    return ctx;
+  }
+
   getNativeRange() {
-    let selection = document.getSelection();
+    let selection = this.context.getSelection();
     if (selection == null || selection.rangeCount <= 0) return null;
     let nativeRange = selection.getRangeAt(0);
     if (nativeRange == null) return null;
@@ -147,7 +164,7 @@ class Selection {
   }
 
   hasFocus() {
-    return document.activeElement === this.root;
+    return !!(this.context.activeElement === this.root);
   }
 
   normalizedToRange(range) {
@@ -241,7 +258,7 @@ class Selection {
     if (startNode != null && (this.root.parentNode == null || startNode.parentNode == null || endNode.parentNode == null)) {
       return;
     }
-    let selection = document.getSelection();
+    let selection = this.context.getSelection();
     if (selection == null) return;
     if (startNode != null) {
       if (!this.hasFocus()) this.root.focus();
