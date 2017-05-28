@@ -21,7 +21,7 @@ class Selection {
     this.scroll = scroll;
     this.composing = false;
     this.root = this.scroll.domNode;
-    this.context = this.getContext();
+    this.rootNode = this.root.getRootNode()
     this.root.addEventListener('compositionstart', () => {
       this.composing = true;
     });
@@ -130,24 +130,13 @@ class Selection {
     }
   }
 
-  getContext() {
-    const supportsShadowDOM = !!HTMLElement.prototype.attachShadow;
-    let ctx = document;
-    if (!!HTMLElement.prototype.attachShadow) {
-      let el = this.root.parentNode;
-      while (!(el === document || el instanceof ShadowRoot)) {
-        el = el.parentNode;
-      }
-      // HACK: if the ShadowRoot doesn't support getSelection then the browser should allow selection
-      // to pass through the ShadowDOM boundary - use document
-      ctx = (el instanceof ShadowRoot && typeof el.getSelection === 'function') ? el : document;
-    }
-    debug.info('getContext', ctx);
-    return ctx;
+  getNativeSelection() {
+    // HACK: some browsers put getSelection() on the ShadowRoot and some don't so test for it on rootNode
+    return (typeof this.rootNode.getSelection === 'function') ? this.rootNode.getSelection() : document.getSelection();
   }
 
   getNativeRange() {
-    let selection = this.context.getSelection();
+    let selection = this.getNativeSelection()
     if (selection == null || selection.rangeCount <= 0) return null;
     let nativeRange = selection.getRangeAt(0);
     if (nativeRange == null) return null;
@@ -164,7 +153,8 @@ class Selection {
   }
 
   hasFocus() {
-    return !!(this.context.activeElement === this.root);
+    let activeElement = this.rootNode.activeElement || document.activeElement;
+    return !!(activeElement === this.root);
   }
 
   normalizedToRange(range) {
@@ -258,7 +248,7 @@ class Selection {
     if (startNode != null && (this.root.parentNode == null || startNode.parentNode == null || endNode.parentNode == null)) {
       return;
     }
-    let selection = this.context.getSelection();
+    let selection = this.getNativeSelection()
     if (selection == null) return;
     if (startNode != null) {
       if (!this.hasFocus()) this.root.focus();
