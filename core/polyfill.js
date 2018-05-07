@@ -22,7 +22,7 @@ if (!Node.prototype.getRootNode) {
       }
       rootNode = currentNode;
     }
-    return rootNode;    
+    return rootNode;
   };
 }
 
